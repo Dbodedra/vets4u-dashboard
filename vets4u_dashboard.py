@@ -18,8 +18,6 @@ STATUS_FILE = "vets4u_daily_status.csv"
 SIMPLE_SCHEDULE_FILE = "vets4u_simple_schedule.csv"
 
 # --- SECURITY CONFIG (HASHED) ---
-# This hash corresponds to the password: "vets4upomeroy1"
-# Generated using hashlib.sha256("vets4upomeroy1".encode()).hexdigest()
 PASSWORD_HASH = "5d62060573b27088b7277227024038273073a9376388403f4042303933743929" 
 
 def check_password():
@@ -592,3 +590,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
