@@ -181,13 +181,17 @@ class Vets4uDashboard:
         
         return roster, "Open"
 
-    def get_absences_and_overrides(self, date_obj):
-        """Combines Holiday Tracker + Manual Check-ins."""
+    def get_status_updates(self, date_obj):
+        """
+        Returns:
+        1. absences: Dict of {Name: Reason} for people marked absent.
+        2. extras: List of Names for people marked 'Present' manually.
+        """
         check_date = date_obj.strftime("%Y-%m-%d")
         absent_staff = {}
+        extras = set()
         
         # 1. File Absences (Holiday Tracker)
-        # We need to handle ranges (Start Date -> End Date)
         df_h = self.data['holidays']
         df_h.columns = [str(c).strip() for c in df_h.columns]
         
@@ -203,24 +207,49 @@ class Vets4uDashboard:
                 except:
                     continue
 
-        # 2. Check-in Overrides (Daily Status)
+        # 2. Check-in Overrides (Daily Status) - The "Truth"
         if os.path.exists(STATUS_FILE):
             df_s = pd.read_csv(STATUS_FILE)
             df_s = df_s[df_s['Date'] == check_date]
+            
+            # We want the LATEST status for each person, so iterate top to bottom
+            status_map = {}
             for _, row in df_s.iterrows():
-                status = row['Status']
-                if status in ['Sick', 'Holiday', 'Absent']:
-                    absent_staff[row['Name']] = f"Reported: {status}"
+                status_map[row['Name']] = row['Status']
+            
+            # Reconcile status
+            for name, status in status_map.items():
+                if status in ['Sick', 'Holiday', 'Late', 'Absent']:
+                    # Mark as absent (overrides holiday file if specific)
+                    absent_staff[name] = f"Reported: {status}"
+                    if name in extras: extras.remove(name)
                 elif status == 'Present':
-                    if row['Name'] in absent_staff: del absent_staff[row['Name']]
+                    # If they were absent in holiday file, remove them from absent list
+                    if name in absent_staff: del absent_staff[name]
+                    # Add to extras list (people who are definitely IN)
+                    extras.add(name)
         
-        return absent_staff
+        return absent_staff, list(extras)
 
     def analyze_day(self, date_obj):
         roster, status = self.get_scheduled_staff(date_obj)
-        if status != "Open": return {'status': 'CLOSED', 'msg': status, 'count': 0}
+        absences, extras = self.get_status_updates(date_obj)
 
-        absences = self.get_absences_and_overrides(date_obj)
+        # AUTO-OPEN / AUTO-FILL LOGIC
+        # If store is closed (no schedule) but people checked in -> Open it
+        if status != "Open": 
+            if extras:
+                status = "Open"
+                roster = {} # Initialize empty roster to fill with extras
+            else:
+                return {'status': 'CLOSED', 'msg': status, 'count': 0}
+
+        # Merge "Extras" (Walk-ins/Check-ins) into the Roster
+        for name in extras:
+            if name not in roster:
+                # Assign them a generic role so they appear on the dashboard
+                roster[name] = ["Flexible / Checked-In"]
+
         active_staff = []
         missing_details = []
 
