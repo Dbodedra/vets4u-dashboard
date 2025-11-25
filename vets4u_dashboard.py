@@ -3,7 +3,6 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import sys
-import hashlib
 
 # Try to import streamlit
 try:
@@ -17,8 +16,9 @@ except ImportError:
 STATUS_FILE = "vets4u_daily_status.csv"
 SIMPLE_SCHEDULE_FILE = "vets4u_simple_schedule.csv"
 
-# --- SECURITY CONFIG (HASHED) ---
-PASSWORD_HASH = "5d62060573b27088b7277227024038273073a9376388403f4042303933743929" 
+# --- SECURITY CONFIG ---
+# Reverted to plain text comparison to fix login issue immediately.
+PASSWORD = "vets4upomeroy1"
 
 def check_password():
     """Returns True if the user has entered the correct password."""
@@ -31,10 +31,7 @@ def check_password():
         st.markdown("### 🔒 Vets4u Ops Login")
         pwd = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True):
-            # Hash the entered password and compare
-            entered_hash = hashlib.sha256(pwd.encode()).hexdigest()
-            
-            if entered_hash == PASSWORD_HASH:
+            if pwd == PASSWORD:
                 st.session_state['password_correct'] = True
                 st.rerun()
             else:
@@ -357,46 +354,21 @@ class Vets4uDashboard:
 def main():
     st.set_page_config(page_title="Vets4u Ops", page_icon="💊", layout="wide")
     
-    # IMPROVED CSS FOR CONTRAST AND READABILITY
+    # RESTORED DARKER BACKGROUND & REMOVED WHITE CARDS
+    # This fixes the blindness issue by using standard dark-grey Streamlit containers.
     st.markdown("""
     <style>
-    /* Main background */
-    .stApp {
-        background-color: #f0f2f6;
-    }
-    
-    /* Styling the metric cards - DARKER BACKGROUND for contrast */
+    /* Default cards for metrics to have a slight grey background to pop */
     div[data-testid="stMetric"] {
-        background-color: #E8EAF6; /* Darker grey/blue */
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        border: 1px solid #C5CAE9; /* Stronger border */
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #dce0e6;
     }
     
-    /* Force text inside metrics to be black */
-    div[data-testid="stMetric"] label {
-        color: #333333 !important;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        color: #000000 !important;
-    }
-    
-    /* Styling the Team Status Containers (Green, Orange, Red boxes) */
-    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-        background-color: #FFFFFF;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    h3 {
-        padding-top: 10px;
-    }
-    
+    /* Alert boxes standard styling */
     .stAlert {
         border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -414,9 +386,9 @@ def main():
         st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • Leicester, UK")
     with col_weather:
         st.markdown("""
-        <div style="text-align: center; background: #F0F2F6; padding: 10px; border-radius: 10px; border: 1px solid #D1D5DB;">
-            <h3 style="margin:0; color: #31333F;">☁️ 12°C</h3>
-            <small style="color: #555;">Leicester, UK</small>
+        <div style="text-align: center; background: #f0f2f6; padding: 10px; border-radius: 10px;">
+            <h3 style="margin:0">☁️ 12°C</h3>
+            <small>Overcast</small>
         </div>
         """, unsafe_allow_html=True)
 
@@ -590,4 +562,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
