@@ -24,15 +24,17 @@ def check_password():
     if st.session_state.get('password_correct', False):
         return True
     
-    st.markdown("### 🔒 Login Required")
-    pwd = st.text_input("Enter Password", type="password")
-    
-    if st.button("Login"):
-        if pwd == PASSWORD:
-            st.session_state['password_correct'] = True
-            st.rerun()
-        else:
-            st.error("❌ Incorrect password")
+    # Minimal Login Page
+    c1, c2, c3 = st.columns([1, 2, 1])
+    with c2:
+        st.markdown("### 🔒 Vets4u Ops Login")
+        pwd = st.text_input("Enter Password", type="password")
+        if st.button("Login", use_container_width=True):
+            if pwd == PASSWORD:
+                st.session_state['password_correct'] = True
+                st.rerun()
+            else:
+                st.error("❌ Incorrect password")
     return False
 
 class Vets4uDashboard:
@@ -191,7 +193,6 @@ class Vets4uDashboard:
             df_s = pd.read_csv(STATUS_FILE)
             df_s = df_s[df_s['Date'] == check_date]
             
-            # Use dictionary to keep only the LATEST status per person
             status_map = {}
             for _, row in df_s.iterrows():
                 status_map[row['Name']] = row['Status']
@@ -225,7 +226,6 @@ class Vets4uDashboard:
         late_staff = []
         sick_staff = []
         
-        # Categorize Staff
         all_names = set(list(roster.keys()) + list(absences.keys()))
         
         for name in all_names:
@@ -233,13 +233,11 @@ class Vets4uDashboard:
                 reason = absences[name]
                 if "Late" in reason:
                     late_staff.append({'Name': name, 'Reason': reason, 'Role': ', '.join(roster.get(name, ['Unassigned']))})
-                    # FIX: Do NOT add Late staff to active_staff. They are not on-site yet.
                 else:
                     sick_staff.append({'Name': name, 'Reason': reason})
             elif name in roster:
                 active_staff.append(name)
         
-        # Metrics Calculation
         metrics = {
             'count': len(active_staff), 
             'openers': 0, 
@@ -353,16 +351,46 @@ class Vets4uDashboard:
 
 # --- Streamlit UI ---
 def main():
-    st.set_page_config(page_title="Vets4u Dashboard", page_icon="💊", layout="wide")
+    st.set_page_config(page_title="Vets4u Ops", page_icon="💊", layout="wide")
+    
+    st.markdown("""
+    <style>
+    div[data-testid="stMetric"] {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+    }
+    .stAlert {
+        border-radius: 8px;
+    }
+    .big-font {
+        font-size: 18px !important;
+        font-weight: 500;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     if not check_password():
         st.stop()
     
     app = Vets4uDashboard()
     
-    st.title("💊 Vets4u Ops Center")
+    col_logo, col_title, col_weather = st.columns([1, 4, 1])
+    with col_logo:
+        st.markdown("# 💊")
+    with col_title:
+        st.title("Vets4u Command Center")
+        st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • London, UK")
+    with col_weather:
+        st.markdown("""
+        <div style="text-align: center; background: #f0f8ff; padding: 10px; border-radius: 10px;">
+            <h3 style="margin:0">☁️ 12°C</h3>
+            <small>Overcast</small>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # NEW 5-TAB STRUCTURE
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Live Dashboard", "✅ Check-In", "📅 Forecast", "👥 Staff Manager", "🗓️ Schedule Builder"])
 
     selected_date = datetime.now()
@@ -370,67 +398,75 @@ def main():
 
     # --- TAB 1: LIVE DASHBOARD ---
     with tab1:
-        st.markdown(f"### 📅 {selected_date.strftime('%A %d %B %Y')}")
+        st.markdown(f"### 📅 Status for {selected_date.strftime('%A %d %B %Y')}")
         result = app.analyze_day(date_obj)
         
         if result.get('status') == 'CLOSED':
             st.info("ℹ️ Store is CLOSED today (or no schedule set).")
         else:
-            # 1. Main Status Banner
+            # 1. STATUS BANNER
             status = result['overall_status']
             if status == "RED": 
-                st.error(f"🛑 **STATUS: {status}** - CRITICAL ISSUES DETECTED")
+                st.error(f"🛑 **CRITICAL STATUS** - {len(result['sick_details'])} Absent - ACTION REQUIRED")
             elif status == "AMBER": 
-                st.warning(f"⚠️ **STATUS: {status}** - WARNING / NO BACKUP")
+                st.warning(f"⚠️ **WARNING LEVEL** - Operating on Minimum Staff")
             else: 
-                st.success(f"✅ **STATUS: {status}** - FULLY OPERATIONAL")
+                st.success(f"✅ **OPERATIONAL** - All Systems Normal")
 
-            # 2. Key Metrics Row
+            # 2. KEY METRICS GRID
             m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Staff On-Site", result['count'])
-            m2.metric("Openers", result['openers'])
-            m3.metric("Checkers", result['checkers'])
-            m4.metric("Absent/Late", len(result['sick_details']) + len(result['late_details']))
+            m1.metric("👥 Team On-Site", result['count'], "Target: 3")
+            m2.metric("🔑 Openers", result['openers'], "Min: 1")
+            m3.metric("💊 Checkers", result['checkers'], "Min: 2")
+            m4.metric("⚠️ Issues", len(result['sick_details']) + len(result['late_details']), "Alerts", delta_color="inverse")
 
-            # 3. Alerts Section
-            if result['alerts']:
-                for alert in result['alerts']: 
-                    st.error(f"🚨 {alert}")
-
-            st.markdown("---")
+            st.divider()
             
-            # 4. Visual Team Board
+            # 3. TOMORROW'S OPENER (UPDATED LOGIC)
+            next_day = date_obj + timedelta(days=1)
+            if next_day.weekday() > 4: # Sat/Sun
+                next_day += timedelta(days=(7 - next_day.weekday()))
+                
+            # Rule: Dipesh on Thursday, Nidhesh on other days
+            if next_day.weekday() == 3: # Thursday
+                opener_name = "Dipesh"
+            else:
+                opener_name = "Nidhesh"
+            
+            st.info(f"🔑 **Next Opening Shift ({next_day.strftime('%A')}):** {opener_name}")
+
+            # 4. MAIN TEAM BOARD
             c_present, c_late, c_absent = st.columns(3)
             
             with c_present:
                 with st.container(border=True):
-                    st.markdown("### 🟢 On Duty")
+                    st.markdown("### 🟢 Active Team")
                     if result['staff_details']:
                         for s in result['staff_details']:
-                            st.markdown(f"**{s['Name']}**")
+                            st.success(f"**{s['Name']}**")
                             st.caption(f"{s['Role']}")
                     else:
-                        st.write("No one checked in yet.")
+                        st.write("Waiting for staff...")
             
             with c_late:
                 with st.container(border=True):
-                    st.markdown("### 🟠 Late / Warning")
+                    st.markdown("### 🟠 Late / Issues")
                     if result['late_details']:
                         for l in result['late_details']:
                             st.warning(f"**{l['Name']}**")
-                            st.caption(f"{l['Reason']}")
+                            st.caption(f"Reason: {l['Reason']}")
                     else:
-                        st.success("No delays reported.")
+                        st.markdown("✅ *No delays*")
 
             with c_absent:
                 with st.container(border=True):
-                    st.markdown("### 🔴 Absent / Sick / Holiday")
+                    st.markdown("### 🔴 Absent / Off")
                     if result['sick_details']:
                         for m in result['sick_details']:
                             st.error(f"**{m['Name']}**")
                             st.caption(f"{m['Reason']}")
                     else:
-                        st.success("Full attendance.")
+                        st.markdown("✅ *Full attendance*")
 
     # --- TAB 2: CHECK-IN & HOLIDAY ---
     with tab2:
@@ -438,38 +474,45 @@ def main():
         
         c1, c2 = st.columns(2)
         with c1:
-            st.info("👉 **Daily Check-In:** Use this when you arrive.")
+            st.info("👉 **Daily Check-In**")
             with st.form("daily_checkin_form"):
                 if not staff_list: st.warning("No staff found.")
-                name = st.selectbox("Your Name", staff_list)
-                status = st.selectbox("Status", ["Present", "Sick", "Late", "Holiday"])
-                note = st.text_input("Note (e.g. 15 mins late)")
-                if st.form_submit_button("Submit Status"):
+                name = st.selectbox("👤 Your Name", staff_list)
+                status = st.selectbox("📍 Status", ["Present", "Sick", "Late", "Holiday"])
+                note = st.text_input("📝 Note (e.g. 15 mins late)")
+                if st.form_submit_button("Update My Status"):
                     app.save_checkin(date_obj, name, status, note)
-                    st.success("Updated!")
+                    st.toast(f"Status updated for {name}!", icon="✅")
                     st.rerun()
         
         with c2:
-            st.warning("✈️ **Future Holidays:** Book leave here.")
+            st.warning("✈️ **Book Future Leave**")
             with st.form("holiday_plan"):
-                h_name = st.selectbox("Name", staff_list, key="h_name")
+                h_name = st.selectbox("👤 Name", staff_list, key="h_name")
                 d1, d2 = st.columns(2)
-                h_start = d1.date_input("Start")
-                h_end = d2.date_input("End")
-                h_type = st.selectbox("Type", ["Holiday", "Sick (Planned)", "Training"])
-                h_note = st.text_input("Reason")
+                h_start = d1.date_input("📅 Start Date")
+                h_end = d2.date_input("📅 End Date")
+                h_type = st.selectbox("🏷 Type", ["Holiday", "Sick (Planned)", "Training"])
+                h_note = st.text_input("📝 Reason")
                 if st.form_submit_button("Book Holiday"):
                     app.save_holiday(h_name, h_start, h_end, h_type, h_note)
-                    st.success("Holiday Booked!")
+                    st.toast("Holiday Booked Successfully!", icon="✈️")
                     st.rerun()
 
     # --- TAB 3: FORECAST ---
     with tab3:
-        st.write("#### 7-Day Outlook")
+        st.write("#### 🔮 7-Day Staffing Outlook")
         forecast_df = app.get_weekly_forecast(date_obj)
+        
+        day_of_week = datetime.now().weekday()
+        progress = (day_of_week + 1) / 5
+        if progress > 1: progress = 1.0
+        st.progress(progress, text=f"Week Progress: {int(progress*100)}%")
+        
+        st.bar_chart(forecast_df.set_index("Day")['Staff Count'], color="#00CC96")
         st.dataframe(forecast_df, use_container_width=True, hide_index=True)
 
-    # --- TAB 4: STAFF MANAGER (Split from Admin) ---
+    # --- TAB 4: STAFF MANAGER ---
     with tab4:
         st.header("👥 Staff Manager")
         st.write("Add new staff or update skills here.")
@@ -481,15 +524,15 @@ def main():
         
         edited_df = st.data_editor(current_df, num_rows="dynamic", use_container_width=True)
         
-        if st.button("Save Staff List"):
+        if st.button("💾 Save Staff List", type="primary"):
             if 'Name' in edited_df.columns:
                 edited_df = edited_df[edited_df['Name'].astype(str).str.strip() != '']
                 edited_df.set_index('Name', inplace=True)
                 app.save_skills(edited_df)
-                st.success("Saved!")
+                st.success("Staff list updated!")
                 st.rerun()
 
-    # --- TAB 5: SCHEDULE BUILDER (Split from Admin) ---
+    # --- TAB 5: SCHEDULE BUILDER ---
     with tab5:
         st.header("🗓️ Schedule Builder")
         st.write("Set the rota for future dates.")
@@ -499,21 +542,22 @@ def main():
         
         c_a, c_b = st.columns(2)
         with c_a:
-            sch_date = st.date_input("Select Date", datetime.now())
+            sch_date = st.date_input("Select Date to Schedule", datetime.now())
         with c_b:
-            opener = st.multiselect("Opener", staff_list)
-            downstairs = st.multiselect("Downstairs", staff_list)
-            upstairs = st.multiselect("Upstairs", staff_list)
-            vet = st.multiselect("Vet Screening", vet_options)
+            st.caption("Assign Roles:")
+            opener = st.multiselect("🔑 Opener", staff_list)
+            downstairs = st.multiselect("⬇️ Downstairs", staff_list)
+            upstairs = st.multiselect("⬆️ Upstairs", staff_list)
+            vet = st.multiselect("🐕 Vet Screening", vet_options)
         
-        if st.button("Save Schedule"):
+        if st.button("💾 Save Schedule", type="primary"):
             app.save_simple_schedule(sch_date, opener, downstairs, upstairs, vet)
             st.success(f"Schedule saved for {sch_date}")
             st.rerun()
 
         if 'simple_schedule' in app.data and not app.data['simple_schedule'].empty:
-            st.markdown("### Existing Schedule")
-            st.dataframe(app.data['simple_schedule'], hide_index=True)
+            st.markdown("### 📋 Existing Schedule Data")
+            st.dataframe(app.data['simple_schedule'], hide_index=True, use_container_width=True)
 
 if __name__ == "__main__":
     main()
