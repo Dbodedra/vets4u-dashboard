@@ -191,6 +191,7 @@ class Vets4uDashboard:
             df_s = pd.read_csv(STATUS_FILE)
             df_s = df_s[df_s['Date'] == check_date]
             
+            # Use dictionary to keep only the LATEST status per person
             status_map = {}
             for _, row in df_s.iterrows():
                 status_map[row['Name']] = row['Status']
@@ -232,10 +233,7 @@ class Vets4uDashboard:
                 reason = absences[name]
                 if "Late" in reason:
                     late_staff.append({'Name': name, 'Reason': reason, 'Role': ', '.join(roster.get(name, ['Unassigned']))})
-                    # Late staff technically count for headcount if we assume they arrive, 
-                    # but for safety we might want to flag them. 
-                    # For this dashboard, we count them as active but show warning.
-                    active_staff.append(name) 
+                    # FIX: Do NOT add Late staff to active_staff. They are not on-site yet.
                 else:
                     sick_staff.append({'Name': name, 'Reason': reason})
             elif name in roster:
@@ -364,13 +362,13 @@ def main():
     
     st.title("💊 Vets4u Ops Center")
 
-    # NEW TABS ORDER
-    tab1, tab2, tab3, tab4 = st.tabs(["🏠 Live Dashboard", "✅ Staff Check-In & Holiday", "📅 Weekly Forecast", "⚙️ Admin"])
+    # NEW 5-TAB STRUCTURE
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Live Dashboard", "✅ Check-In", "📅 Forecast", "👥 Staff Manager", "🗓️ Schedule Builder"])
 
     selected_date = datetime.now()
     date_obj = datetime.combine(selected_date, datetime.min.time())
 
-    # --- TAB 1: LIVE DASHBOARD (The "Pretty" View) ---
+    # --- TAB 1: LIVE DASHBOARD ---
     with tab1:
         st.markdown(f"### 📅 {selected_date.strftime('%A %d %B %Y')}")
         result = app.analyze_day(date_obj)
@@ -434,7 +432,7 @@ def main():
                     else:
                         st.success("Full attendance.")
 
-    # --- TAB 2: CHECK-IN ---
+    # --- TAB 2: CHECK-IN & HOLIDAY ---
     with tab2:
         staff_list = app.data['skills'].index.tolist() if 'skills' in app.data else []
         
@@ -471,48 +469,51 @@ def main():
         forecast_df = app.get_weekly_forecast(date_obj)
         st.dataframe(forecast_df, use_container_width=True, hide_index=True)
 
-    # --- TAB 4: ADMIN ---
+    # --- TAB 4: STAFF MANAGER (Split from Admin) ---
     with tab4:
-        st.header("⚙️ Admin Panel")
-        st.info("Manage Staff List & Build Schedules")
+        st.header("👥 Staff Manager")
+        st.write("Add new staff or update skills here.")
         
-        admin_t1, admin_t2 = st.tabs(["👥 Manage Staff", "🗓️ Schedule Builder"])
+        if 'skills' in app.data:
+            current_df = app.data['skills'].reset_index()
+        else:
+            current_df = pd.DataFrame(columns=["Name", "Opening", "Dispensing", "Second Check", "Vet Screening"])
         
-        with admin_t1:
-            if 'skills' in app.data:
-                current_df = app.data['skills'].reset_index()
-            else:
-                current_df = pd.DataFrame(columns=["Name", "Opening", "Dispensing", "Second Check", "Vet Screening"])
-            edited_df = st.data_editor(current_df, num_rows="dynamic", use_container_width=True)
-            if st.button("Save Staff List"):
-                if 'Name' in edited_df.columns:
-                    edited_df = edited_df[edited_df['Name'].astype(str).str.strip() != '']
-                    edited_df.set_index('Name', inplace=True)
-                    app.save_skills(edited_df)
-                    st.success("Saved!")
-                    st.rerun()
-
-        with admin_t2:
-            staff_list = app.data['skills'].index.tolist() if 'skills' in app.data else []
-            vet_options = staff_list + [p for p in ["Sue", "The Vets"] if p not in staff_list]
-            
-            c_a, c_b = st.columns(2)
-            with c_a:
-                sch_date = st.date_input("Schedule Date", datetime.now())
-            with c_b:
-                opener = st.multiselect("Opener", staff_list)
-                downstairs = st.multiselect("Downstairs", staff_list)
-                upstairs = st.multiselect("Upstairs", staff_list)
-                vet = st.multiselect("Vet Screening", vet_options)
-            
-            if st.button("Save Schedule"):
-                app.save_simple_schedule(sch_date, opener, downstairs, upstairs, vet)
-                st.success(f"Schedule saved for {sch_date}")
+        edited_df = st.data_editor(current_df, num_rows="dynamic", use_container_width=True)
+        
+        if st.button("Save Staff List"):
+            if 'Name' in edited_df.columns:
+                edited_df = edited_df[edited_df['Name'].astype(str).str.strip() != '']
+                edited_df.set_index('Name', inplace=True)
+                app.save_skills(edited_df)
+                st.success("Saved!")
                 st.rerun()
 
-            if 'simple_schedule' in app.data and not app.data['simple_schedule'].empty:
-                st.markdown("### Existing Schedule")
-                st.dataframe(app.data['simple_schedule'], hide_index=True)
+    # --- TAB 5: SCHEDULE BUILDER (Split from Admin) ---
+    with tab5:
+        st.header("🗓️ Schedule Builder")
+        st.write("Set the rota for future dates.")
+        
+        staff_list = app.data['skills'].index.tolist() if 'skills' in app.data else []
+        vet_options = staff_list + [p for p in ["Sue", "The Vets"] if p not in staff_list]
+        
+        c_a, c_b = st.columns(2)
+        with c_a:
+            sch_date = st.date_input("Select Date", datetime.now())
+        with c_b:
+            opener = st.multiselect("Opener", staff_list)
+            downstairs = st.multiselect("Downstairs", staff_list)
+            upstairs = st.multiselect("Upstairs", staff_list)
+            vet = st.multiselect("Vet Screening", vet_options)
+        
+        if st.button("Save Schedule"):
+            app.save_simple_schedule(sch_date, opener, downstairs, upstairs, vet)
+            st.success(f"Schedule saved for {sch_date}")
+            st.rerun()
+
+        if 'simple_schedule' in app.data and not app.data['simple_schedule'].empty:
+            st.markdown("### Existing Schedule")
+            st.dataframe(app.data['simple_schedule'], hide_index=True)
 
 if __name__ == "__main__":
     main()
