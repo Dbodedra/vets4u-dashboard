@@ -59,8 +59,8 @@ class Vets4uDashboard:
                 {"Name": "Nidhesh", "Opening": "YES", "Dispensing": "YES", "Second Check": "YES", "Vet Screening": "NO"},
                 {"Name": "Varsha", "Opening": "NO", "Dispensing": "YES", "Second Check": "YES", "Vet Screening": "NO"},
                 {"Name": "VJ", "Opening": "NO", "Dispensing": "YES", "Second Check": "YES", "Vet Screening": "NO"},
-                {"Name": "Rushil", "Opening": "NO", "Dispensing": "NO", "Second Check": "NO", "Vet Screening": "NO"}, # Added
-                {"Name": "Rak", "Opening": "YES", "Dispensing": "NO", "Second Check": "NO", "Vet Screening": "NO"}    # Added
+                {"Name": "Rushil", "Opening": "NO", "Dispensing": "NO", "Second Check": "NO", "Vet Screening": "NO"},
+                {"Name": "Rak", "Opening": "YES", "Dispensing": "NO", "Second Check": "NO", "Vet Screening": "NO"}
             ]
             pd.DataFrame(default_staff).to_csv(self.files['skills'], index=False)
         
@@ -402,7 +402,9 @@ def main():
         with c_checkin:
             st.markdown("### 📍 Daily Check-In")
             st.info("Update status for **Today Only**.")
-            with st.form("checkin"):
+            
+            # FIXED: Renamed form key to avoid duplicates
+            with st.form("daily_checkin_form"):
                 if not staff_list:
                     st.warning("No staff found. Go to Admin.")
                 
@@ -475,7 +477,6 @@ def main():
             staff_list = app.data['skills'].index.tolist() if 'skills' in app.data else []
             
             # Create special list for Vet Screening that includes "Sue" and "The Vets"
-            # We filter duplicates just in case
             vet_options = staff_list + [p for p in ["Sue", "The Vets"] if p not in staff_list]
             
             col1, col2 = st.columns(2)
@@ -487,7 +488,6 @@ def main():
                 opener = st.multiselect("Opener (First In)", staff_list)
                 downstairs = st.multiselect("Downstairs Staff", staff_list)
                 upstairs = st.multiselect("Upstairs Staff", staff_list)
-                # UPDATED: Use the special list here
                 vet = st.multiselect("Vet Screening", vet_options)
             
             if st.button("Save Schedule for Date"):
@@ -503,5 +503,4 @@ def main():
                 st.info("No schedule data yet.")
 
 if __name__ == "__main__":
-    main()
     main()
