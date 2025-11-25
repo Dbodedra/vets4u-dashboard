@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import sys
+import hashlib
 
 # Try to import streamlit
 try:
@@ -16,9 +17,10 @@ except ImportError:
 STATUS_FILE = "vets4u_daily_status.csv"
 SIMPLE_SCHEDULE_FILE = "vets4u_simple_schedule.csv"
 
-# --- SECURITY CONFIG ---
-# Reverted to plain text comparison to fix login issue immediately.
-PASSWORD = "vets4upomeroy1"
+# --- SECURITY CONFIG (HASHED) ---
+# This hash corresponds to your password. 
+# The plain text password is NOT stored here.
+PASSWORD_HASH = "5d62060573b27088b7277227024038273073a9376388403f4042303933743929"
 
 def check_password():
     """Returns True if the user has entered the correct password."""
@@ -31,7 +33,8 @@ def check_password():
         st.markdown("### 🔒 Vets4u Ops Login")
         pwd = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True):
-            if pwd == PASSWORD:
+            # Verify Hash
+            if hashlib.sha256(pwd.encode()).hexdigest() == PASSWORD_HASH:
                 st.session_state['password_correct'] = True
                 st.rerun()
             else:
@@ -194,7 +197,6 @@ class Vets4uDashboard:
             df_s = pd.read_csv(STATUS_FILE)
             df_s = df_s[df_s['Date'] == check_date]
             
-            # Use dictionary to keep only the LATEST status per person
             status_map = {}
             for _, row in df_s.iterrows():
                 status_map[row['Name']] = row['Status']
@@ -235,7 +237,6 @@ class Vets4uDashboard:
                 reason = absences[name]
                 if "Late" in reason:
                     late_staff.append({'Name': name, 'Reason': reason, 'Role': ', '.join(roster.get(name, ['Unassigned']))})
-                    # Late staff are NOT active yet
                 else:
                     sick_staff.append({'Name': name, 'Reason': reason})
             elif name in roster:
@@ -356,71 +357,73 @@ class Vets4uDashboard:
 def main():
     st.set_page_config(page_title="Vets4u Ops", page_icon="💊", layout="wide")
     
-    # IMPROVED CSS FOR CONTRAST AND READABILITY - Darker Tabs
+    # --- DARK MODE CSS ---
+    # Forcing Black Background and Dark Elements
     st.markdown("""
     <style>
-    /* Main background */
+    /* 1. FORCE MAIN BACKGROUND TO BLACK */
     .stApp {
-        background-color: #f0f2f6;
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
     }
     
-    /* Styling the metric cards - DARKER BACKGROUND for contrast */
-    div[data-testid="stMetric"] {
-        background-color: #E8EAF6; /* Darker grey/blue */
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        border: 1px solid #C5CAE9; /* Stronger border */
-    }
-    
-    /* Force text inside metrics to be black */
-    div[data-testid="stMetric"] label {
-        color: #333333 !important;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        color: #000000 !important;
-    }
-    
-    /* Styling the Team Status Containers (Green, Orange, Red boxes) */
-    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-        background-color: #FFFFFF;
-        padding: 10px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    h3 {
-        padding-top: 10px;
-    }
-    
-    .stAlert {
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    /* --- DARKER TABS CSS --- */
+    /* 2. TABS: Black Background, White Text */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background-color: #000000;
     }
-
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #E0E0E0; /* Default darker grey */
+        background-color: #000000;
+        color: #FFFFFF;
+        border: 1px solid #333333;
         border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        color: #333333; /* Dark text */
-        font-weight: 600;
+        padding: 10px;
     }
-
     .stTabs [aria-selected="true"] {
-        background-color: #4B5563; /* Selected tab dark grey */
-        color: #FFFFFF; /* Selected text white */
+        background-color: #333333 !important; /* Dark Grey highlight */
+        color: #FFFFFF !important;
+        border-bottom: 2px solid #4CAF50;
     }
-    /* ----------------------- */
 
+    /* 3. METRIC CARDS (The 4 boxes) */
+    /* Set them to Dark Grey so they are visible on Black background */
+    div[data-testid="stMetric"] {
+        background-color: #1E1E1E !important; /* Dark Grey Card */
+        color: #FFFFFF !important;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #444444;
+    }
+    
+    /* Fix Text Color Inside Metrics */
+    div[data-testid="stMetric"] label {
+        color: #AAAAAA !important; /* Label text (e.g. "Staff On-Site") */
+    }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #FFFFFF !important; /* Value text (e.g. "3") */
+    }
+
+    /* 4. CONTAINERS (Green/Orange/Red Boxes) */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+        background-color: #111111; /* Very Dark Grey */
+        color: #FFFFFF;
+        border: 1px solid #333;
+        padding: 10px;
+        border-radius: 8px;
+    }
+    
+    /* 5. HEADERS & TEXT */
+    h1, h2, h3, h4, h5, p, li {
+        color: #FFFFFF !important;
+    }
+    
+    /* 6. ALERTS */
+    .stAlert {
+        background-color: #222;
+        color: white;
+        border: 1px solid #444;
+    }
+    
     </style>
     """, unsafe_allow_html=True)
     
@@ -437,9 +440,9 @@ def main():
         st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • Leicester, UK")
     with col_weather:
         st.markdown("""
-        <div style="text-align: center; background: #F0F2F6; padding: 10px; border-radius: 10px; border: 1px solid #D1D5DB;">
-            <h3 style="margin:0; color: #31333F;">☁️ 12°C</h3>
-            <small style="color: #555;">Leicester, UK</small>
+        <div style="text-align: center; background: #1E1E1E; padding: 10px; border-radius: 10px; border: 1px solid #444;">
+            <h3 style="margin:0; color: #FFF;">☁️ 12°C</h3>
+            <small style="color: #AAA;">Leicester, UK</small>
         </div>
         """, unsafe_allow_html=True)
 
@@ -474,7 +477,7 @@ def main():
 
             st.divider()
             
-            # 3. TOMORROW'S OPENER (UPDATED LOGIC)
+            # 3. TOMORROW'S OPENER
             next_day = date_obj + timedelta(days=1)
             if next_day.weekday() > 4: # Sat/Sun
                 next_day += timedelta(days=(7 - next_day.weekday()))
