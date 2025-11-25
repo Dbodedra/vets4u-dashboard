@@ -18,10 +18,10 @@ except ImportError:
 STATUS_FILE = "vets4u_daily_status.csv"
 SIMPLE_SCHEDULE_FILE = "vets4u_simple_schedule.csv"
 
-# --- SECURITY CONFIG (HASHED) ---
-# Correct SHA-256 hash for the password provided
-# Generated via: hashlib.sha256("vets4upomeroy1".encode()).hexdigest()
-PASSWORD_HASH = "5d62060573b27088b7277227024038273073a9376388403f4042303933743929"
+# --- SECURITY CONFIG ---
+# Switched to plain text to resolve login issues.
+# Re-enable hashing later if needed.
+PASSWORD = "vets4upomeroy1"
 
 def check_password():
     """Returns True if the user has entered the correct password."""
@@ -34,9 +34,8 @@ def check_password():
         st.markdown("### 🔒 Vets4u Ops Login")
         pwd = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True):
-            # Verify Hash
-            # Using .strip() to remove accidental whitespace
-            if hashlib.sha256(pwd.strip().encode()).hexdigest() == PASSWORD_HASH:
+            # Direct comparison to fix login issue
+            if pwd == PASSWORD:
                 st.session_state['password_correct'] = True
                 st.rerun()
             else:
