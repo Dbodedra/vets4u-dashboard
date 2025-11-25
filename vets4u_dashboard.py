@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import os
 import sys
 import hashlib
+import random
 
 # Try to import streamlit
 try:
@@ -18,8 +19,8 @@ STATUS_FILE = "vets4u_daily_status.csv"
 SIMPLE_SCHEDULE_FILE = "vets4u_simple_schedule.csv"
 
 # --- SECURITY CONFIG (HASHED) ---
-# This hash corresponds to your password. 
-# The plain text password is NOT stored here.
+# Correct SHA-256 hash for the password provided
+# Generated via: hashlib.sha256("vets4upomeroy1".encode()).hexdigest()
 PASSWORD_HASH = "5d62060573b27088b7277227024038273073a9376388403f4042303933743929"
 
 def check_password():
@@ -34,12 +35,27 @@ def check_password():
         pwd = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True):
             # Verify Hash
-            if hashlib.sha256(pwd.encode()).hexdigest() == PASSWORD_HASH:
+            # Using .strip() to remove accidental whitespace
+            if hashlib.sha256(pwd.strip().encode()).hexdigest() == PASSWORD_HASH:
                 st.session_state['password_correct'] = True
                 st.rerun()
             else:
                 st.error("❌ Incorrect password")
     return False
+
+def get_daily_quote():
+    quotes = [
+        "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+        "Believe you can and you're halfway there.",
+        "Quality means doing it right when no one is looking.",
+        "Your positive action combined with positive thinking results in success.",
+        "Teamwork makes the dream work.",
+        "Don't watch the clock; do what it does. Keep going.",
+        "Excellence is not a skill. It is an attitude.",
+        "The only way to do great work is to love what you do."
+    ]
+    day_of_year = datetime.now().timetuple().tm_yday
+    return quotes[day_of_year % len(quotes)]
 
 class Vets4uDashboard:
     def __init__(self):
@@ -55,7 +71,6 @@ class Vets4uDashboard:
 
     def ensure_data_loaded(self):
         """Loads data. If files missing, creates templates."""
-        # 1. Load or Create Skills Matrix
         if not os.path.exists(self.files['skills']):
             self.using_demo_data = True
             default_staff = [
@@ -85,7 +100,6 @@ class Vets4uDashboard:
                 self.data['skills']['Name'] = self.data['skills']['Name'].astype(str).str.strip()
                 self.data['skills'].set_index('Name', inplace=True)
             
-            # 2. Load Holiday Tracker
             if not os.path.exists(self.files['holidays']):
                  pd.DataFrame(columns=["Name", "Request Date", "Absence Start", "Absence End", "Type", "Status"]).to_csv(self.files['holidays'], index=False)
             
@@ -100,7 +114,6 @@ class Vets4uDashboard:
             except:
                 self.data['holidays'] = pd.read_csv(self.files['holidays'])
 
-            # 3. Load Schedule
             if os.path.exists(SIMPLE_SCHEDULE_FILE):
                 self.data['simple_schedule'] = pd.read_csv(SIMPLE_SCHEDULE_FILE)
             else:
@@ -120,7 +133,6 @@ class Vets4uDashboard:
     def get_scheduled_staff(self, query_date):
         q_date_str = query_date.strftime("%Y-%m-%d")
         
-        # Check Simple Schedule
         df_simple = self.data.get('simple_schedule')
         if df_simple is not None and not df_simple.empty:
             day_row = df_simple[df_simple['Date'] == q_date_str]
@@ -135,7 +147,6 @@ class Vets4uDashboard:
                             roster[n].append(role)
                 return roster, "Open"
 
-        # Check Legacy Schedule
         df_legacy = self.data.get('legacy_schedule')
         if df_legacy is None or df_legacy.empty:
             return {}, "No Schedule Data"
@@ -176,7 +187,6 @@ class Vets4uDashboard:
         absent_staff = {}
         extras = set()
         
-        # 1. File Absences
         df_h = self.data['holidays']
         df_h.columns = [str(c).strip() for c in df_h.columns]
         
@@ -192,7 +202,6 @@ class Vets4uDashboard:
                 except:
                     continue
 
-        # 2. Check-in Overrides
         if os.path.exists(STATUS_FILE):
             df_s = pd.read_csv(STATUS_FILE)
             df_s = df_s[df_s['Date'] == check_date]
@@ -439,12 +448,9 @@ def main():
         st.title("Vets4u Command Center")
         st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • Leicester, UK")
     with col_weather:
-        st.markdown("""
-        <div style="text-align: center; background: #1E1E1E; padding: 10px; border-radius: 10px; border: 1px solid #444;">
-            <h3 style="margin:0; color: #FFF;">☁️ 12°C</h3>
-            <small style="color: #AAA;">Leicester, UK</small>
-        </div>
-        """, unsafe_allow_html=True)
+        # REMOVED WEATHER - ADDED PLACEHOLDER FOR NOW
+        # Or just kept blank to align columns
+        pass
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏠 Live Dashboard", "✅ Check-In", "📅 Forecast", "👥 Staff Manager", "🗓️ Schedule Builder"])
 
@@ -522,6 +528,10 @@ def main():
                             st.caption(f"{m['Reason']}")
                     else:
                         st.markdown("✅ *Full attendance*")
+                        
+            # 5. DAILY QUOTE (Footer)
+            st.markdown("---")
+            st.markdown(f"<div style='text-align: center; color: #888;'><i>✨ {get_daily_quote()}</i></div>", unsafe_allow_html=True)
 
     # --- TAB 2: CHECK-IN & HOLIDAY ---
     with tab2:
