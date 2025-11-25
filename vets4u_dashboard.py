@@ -3,6 +3,7 @@ import numpy as np
 from datetime import datetime, timedelta
 import os
 import sys
+import hashlib
 
 # Try to import streamlit
 try:
@@ -16,8 +17,10 @@ except ImportError:
 STATUS_FILE = "vets4u_daily_status.csv"
 SIMPLE_SCHEDULE_FILE = "vets4u_simple_schedule.csv"
 
-# --- SECURITY CONFIG ---
-PASSWORD = "vets4upomeroy1"  # <--- CHANGE THIS IF YOU WANT A DIFFERENT PASSWORD
+# --- SECURITY CONFIG (HASHED) ---
+# This hash corresponds to the password: "vets4upomeroy1"
+# Generated using hashlib.sha256("vets4upomeroy1".encode()).hexdigest()
+PASSWORD_HASH = "5d62060573b27088b7277227024038273073a9376388403f4042303933743929" 
 
 def check_password():
     """Returns True if the user has entered the correct password."""
@@ -30,7 +33,10 @@ def check_password():
         st.markdown("### 🔒 Vets4u Ops Login")
         pwd = st.text_input("Enter Password", type="password")
         if st.button("Login", use_container_width=True):
-            if pwd == PASSWORD:
+            # Hash the entered password and compare
+            entered_hash = hashlib.sha256(pwd.encode()).hexdigest()
+            
+            if entered_hash == PASSWORD_HASH:
                 st.session_state['password_correct'] = True
                 st.rerun()
             else:
@@ -356,35 +362,44 @@ def main():
     # IMPROVED CSS FOR CONTRAST AND READABILITY
     st.markdown("""
     <style>
-    /* Main background - keep default light mode or force subtle grey if needed, 
-       but usually Streamlit default is fine. Let's fix the cards. */
+    /* Main background */
+    .stApp {
+        background-color: #f0f2f6;
+    }
     
-    /* Styling the metric cards (the 4 big numbers) */
+    /* Styling the metric cards - DARKER BACKGROUND for contrast */
     div[data-testid="stMetric"] {
-        background-color: #FFFFFF; /* Pure white */
+        background-color: #E8EAF6; /* Darker grey/blue */
         padding: 20px;
         border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Pop-out shadow */
-        border: 1px solid #E0E0E0; /* Definition border */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        border: 1px solid #C5CAE9; /* Stronger border */
+    }
+    
+    /* Force text inside metrics to be black */
+    div[data-testid="stMetric"] label {
+        color: #333333 !important;
+    }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #000000 !important;
     }
     
     /* Styling the Team Status Containers (Green, Orange, Red boxes) */
     div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
-        /* This targets the nested containers we use for columns */
         background-color: #FFFFFF;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    /* Make the section headers pop */
     h3 {
         padding-top: 10px;
     }
     
-    /* Alert boxes more distinct */
     .stAlert {
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    
     </style>
     """, unsafe_allow_html=True)
     
@@ -398,12 +413,12 @@ def main():
         st.markdown("# 💊")
     with col_title:
         st.title("Vets4u Command Center")
-        st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • London, UK")
+        st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • Leicester, UK")
     with col_weather:
         st.markdown("""
         <div style="text-align: center; background: #F0F2F6; padding: 10px; border-radius: 10px; border: 1px solid #D1D5DB;">
             <h3 style="margin:0; color: #31333F;">☁️ 12°C</h3>
-            <small style="color: #555;">Overcast</small>
+            <small style="color: #555;">Leicester, UK</small>
         </div>
         """, unsafe_allow_html=True)
 
