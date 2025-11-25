@@ -353,22 +353,38 @@ class Vets4uDashboard:
 def main():
     st.set_page_config(page_title="Vets4u Ops", page_icon="💊", layout="wide")
     
+    # IMPROVED CSS FOR CONTRAST AND READABILITY
     st.markdown("""
     <style>
+    /* Main background - keep default light mode or force subtle grey if needed, 
+       but usually Streamlit default is fine. Let's fix the cards. */
+    
+    /* Styling the metric cards (the 4 big numbers) */
     div[data-testid="stMetric"] {
-        background-color: #ffffff;
-        padding: 15px;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border: 1px solid #f0f0f0;
+        background-color: #FFFFFF; /* Pure white */
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* Pop-out shadow */
+        border: 1px solid #E0E0E0; /* Definition border */
     }
+    
+    /* Styling the Team Status Containers (Green, Orange, Red boxes) */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+        /* This targets the nested containers we use for columns */
+        background-color: #FFFFFF;
+    }
+    
+    /* Make the section headers pop */
+    h3 {
+        padding-top: 10px;
+    }
+    
+    /* Alert boxes more distinct */
     .stAlert {
         border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .big-font {
-        font-size: 18px !important;
-        font-weight: 500;
-    }
+    
     </style>
     """, unsafe_allow_html=True)
     
@@ -385,9 +401,9 @@ def main():
         st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • London, UK")
     with col_weather:
         st.markdown("""
-        <div style="text-align: center; background: #f0f8ff; padding: 10px; border-radius: 10px;">
-            <h3 style="margin:0">☁️ 12°C</h3>
-            <small>Overcast</small>
+        <div style="text-align: center; background: #F0F2F6; padding: 10px; border-radius: 10px; border: 1px solid #D1D5DB;">
+            <h3 style="margin:0; color: #31333F;">☁️ 12°C</h3>
+            <small style="color: #555;">Overcast</small>
         </div>
         """, unsafe_allow_html=True)
 
