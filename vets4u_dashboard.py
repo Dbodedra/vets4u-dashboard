@@ -194,6 +194,7 @@ class Vets4uDashboard:
             df_s = pd.read_csv(STATUS_FILE)
             df_s = df_s[df_s['Date'] == check_date]
             
+            # Use dictionary to keep only the LATEST status per person
             status_map = {}
             for _, row in df_s.iterrows():
                 status_map[row['Name']] = row['Status']
@@ -234,6 +235,7 @@ class Vets4uDashboard:
                 reason = absences[name]
                 if "Late" in reason:
                     late_staff.append({'Name': name, 'Reason': reason, 'Role': ', '.join(roster.get(name, ['Unassigned']))})
+                    # Late staff are NOT active yet
                 else:
                     sick_staff.append({'Name': name, 'Reason': reason})
             elif name in roster:
@@ -354,22 +356,71 @@ class Vets4uDashboard:
 def main():
     st.set_page_config(page_title="Vets4u Ops", page_icon="💊", layout="wide")
     
-    # RESTORED DARKER BACKGROUND & REMOVED WHITE CARDS
-    # This fixes the blindness issue by using standard dark-grey Streamlit containers.
+    # IMPROVED CSS FOR CONTRAST AND READABILITY - Darker Tabs
     st.markdown("""
     <style>
-    /* Default cards for metrics to have a slight grey background to pop */
-    div[data-testid="stMetric"] {
+    /* Main background */
+    .stApp {
         background-color: #f0f2f6;
-        padding: 15px;
-        border-radius: 8px;
-        border: 1px solid #dce0e6;
     }
     
-    /* Alert boxes standard styling */
+    /* Styling the metric cards - DARKER BACKGROUND for contrast */
+    div[data-testid="stMetric"] {
+        background-color: #E8EAF6; /* Darker grey/blue */
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        border: 1px solid #C5CAE9; /* Stronger border */
+    }
+    
+    /* Force text inside metrics to be black */
+    div[data-testid="stMetric"] label {
+        color: #333333 !important;
+    }
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #000000 !important;
+    }
+    
+    /* Styling the Team Status Containers (Green, Orange, Red boxes) */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlock"] {
+        background-color: #FFFFFF;
+        padding: 10px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    h3 {
+        padding-top: 10px;
+    }
+    
     .stAlert {
         border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
+
+    /* --- DARKER TABS CSS --- */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #E0E0E0; /* Default darker grey */
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        color: #333333; /* Dark text */
+        font-weight: 600;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #4B5563; /* Selected tab dark grey */
+        color: #FFFFFF; /* Selected text white */
+    }
+    /* ----------------------- */
+
     </style>
     """, unsafe_allow_html=True)
     
@@ -386,9 +437,9 @@ def main():
         st.caption(f"Logged in as Admin • {datetime.now().strftime('%H:%M')} • Leicester, UK")
     with col_weather:
         st.markdown("""
-        <div style="text-align: center; background: #f0f2f6; padding: 10px; border-radius: 10px;">
-            <h3 style="margin:0">☁️ 12°C</h3>
-            <small>Overcast</small>
+        <div style="text-align: center; background: #F0F2F6; padding: 10px; border-radius: 10px; border: 1px solid #D1D5DB;">
+            <h3 style="margin:0; color: #31333F;">☁️ 12°C</h3>
+            <small style="color: #555;">Leicester, UK</small>
         </div>
         """, unsafe_allow_html=True)
 
