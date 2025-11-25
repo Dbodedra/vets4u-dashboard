@@ -474,6 +474,10 @@ def main():
             # Get staff list
             staff_list = app.data['skills'].index.tolist() if 'skills' in app.data else []
             
+            # Create special list for Vet Screening that includes "Sue" and "The Vets"
+            # We filter duplicates just in case
+            vet_options = staff_list + [p for p in ["Sue", "The Vets"] if p not in staff_list]
+            
             col1, col2 = st.columns(2)
             with col1:
                 sch_date = st.date_input("Select Date to Schedule", datetime.now())
@@ -483,7 +487,8 @@ def main():
                 opener = st.multiselect("Opener (First In)", staff_list)
                 downstairs = st.multiselect("Downstairs Staff", staff_list)
                 upstairs = st.multiselect("Upstairs Staff", staff_list)
-                vet = st.multiselect("Vet Screening", staff_list)
+                # UPDATED: Use the special list here
+                vet = st.multiselect("Vet Screening", vet_options)
             
             if st.button("Save Schedule for Date"):
                 app.save_simple_schedule(sch_date, opener, downstairs, upstairs, vet)
@@ -498,4 +503,5 @@ def main():
                 st.info("No schedule data yet.")
 
 if __name__ == "__main__":
+    main()
     main()
